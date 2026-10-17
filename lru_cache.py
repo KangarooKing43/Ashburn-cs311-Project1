@@ -27,8 +27,14 @@ class LRUCache:
         Return the value for `key` and move it to the most-recently-used
         end, or return the _MISSING sentinel if absent. Both in O(1).
         """
-        # TODO
-        raise NotImplementedError
+        with self._lock:
+            node = self.map.get(key)
+
+            if node is None:
+                return _MISSING
+
+            self.list.move_to_front(node)
+            return node.value
 
     def put(self, key: Any, value: Any) -> None:
         """
@@ -36,5 +42,25 @@ class LRUCache:
         If at capacity, evict the least-recently-used entry BEFORE
         inserting the new one. O(1).
         """
-        # TODO
-        raise NotImplementedError
+        with self._lock:
+            # If the key already exists, update its value and mark it
+            # as the most recently used.
+            if key in self.map:
+                node = self.map[key]
+                node.value = value
+                self.list.move_to_front(node)
+                return
+
+            # Evict the least recently used entry if the cache is full.
+            if len(self.map) >= self.capacity:
+                lru_node = self.list.least_recently_used()
+
+                if lru_node is not None:
+                    self.list.remove(lru_node)
+                    del self.map[lru_node.key]
+
+            # Create and insert the new entry at the front.
+            new_node = Node(key, value)
+            self.list.add_to_front(new_node)
+            self.map[key] = new_node
+
